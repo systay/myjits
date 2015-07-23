@@ -1,12 +1,14 @@
 package controllers
 
-import play.api._
+import models.Global
 import play.api.mvc._
 
 class Application extends Controller {
 
   def index = Action {
-    Ok(views.html.index("Your old application is ready."))
+    val result = Global.engine.execute("RETURN 'Hello Through Neo4j!' as x").dumpToString()
+
+    Ok(views.html.index(result))
   }
 
 }
