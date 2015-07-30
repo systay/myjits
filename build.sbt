@@ -11,7 +11,8 @@ libraryDependencies ++= Seq(
   cache,
   ws,
   specs2 % Test,
-  "org.neo4j" % "neo4j" % "2.3.0-M02"
+  "org.neo4j" % "neo4j" % "2.3.0-M02",
+  "org.mindrot"  % "jbcrypt"   % "0.3m"
 )
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"

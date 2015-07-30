@@ -1,0 +1,30 @@
+@(message: String, createUserForm: Form[CreateUserForm], logOnForm: Form[LogOnForm])(implicit messages: Messages)
+
+@import helper._
+
+@main("Log in please", None) {
+    <p><strong>@message</strong></p>
+
+    <p>If you do not already have an account with us, please create one!</p>
+    @form(routes.UserController.addUser) {
+        @inputText(createUserForm("name"))
+        @inputText(createUserForm("email"))
+        @inputPassword(createUserForm("password"))
+
+        <div class="buttons">
+            <input type="submit" value="Create User"/>
+        </div>
+    }
+
+    <p>Already have an account? Welcome back!</p>
+    @form(routes.UserController.logIn) {
+        @inputText(logOnForm("email"))
+        @inputPassword(logOnForm("password"))
+
+        <div class="buttons">
+            <input type="submit" value="Login"/>
+        </div>
+    }
+
+
+}
