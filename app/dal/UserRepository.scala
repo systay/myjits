@@ -17,6 +17,17 @@ class UserRepository @Inject()(lifecycle: ApplicationLifecycle) {
   val db = new GraphDatabaseFactory().newEmbeddedDatabase(new File("db"))
   val engine = new ExecutionEngine(db)
 
+  { // Create db schema if it's not already there
+    val tx = db.beginTx()
+    try {
+      if (!db.schema().getConstraints.iterator().hasNext) {
+        Logger.info("New database found. Setting up constraints and indexes")
+        engine.execute("CREATE CONSTRAINT ON (u:User) ASSERT u.email IS UNIQUE")
+      }
+      tx.success()
+    } finally tx.close()
+  }
+
   lifecycle.addStopHook { () =>
     Logger.info("database cleanly shutdown")
     Future.successful(db.shutdown())

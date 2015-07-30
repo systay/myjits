@@ -26,7 +26,7 @@
                 @if(user.isEmpty) {
                     <li><a href="login">Login</a></li>
                 } else {
-                    <li><a href="/">@user.get.name</a></li>
+                    <li><a href="@routes.UserController.logOff">Log out @user.get.name</a></li>
                 }
 
             </ul>

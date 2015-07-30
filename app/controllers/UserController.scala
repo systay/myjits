@@ -24,8 +24,11 @@ class UserController @Inject()(repo: UserRepository, val messagesApi: MessagesAp
   )(LogOnForm.apply)(LogOnForm.unapply))
 
 
-  def index = Action {
-    Ok(views.html.login("", createUserForm, loginForm))
+  def index = Action { implicit request =>
+    if (request.session.data.contains("id"))
+      Redirect(routes.MainPageController.index)
+    else
+      Ok(views.html.login("", createUserForm, loginForm))
   }
 
   def addUser = Action { implicit request =>
@@ -50,6 +53,10 @@ class UserController @Inject()(repo: UserRepository, val messagesApi: MessagesAp
 
       }
     )
+  }
+
+  def logOff = Action { implicit request =>
+    Redirect(routes.MainPageController.index).removingFromSession("id")
   }
 
 }
