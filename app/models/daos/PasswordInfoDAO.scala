@@ -1,18 +1,20 @@
 package models.daos
 
+import javax.inject.Inject
+
 import com.mohiva.play.silhouette.api.LoginInfo
 import com.mohiva.play.silhouette.api.util.PasswordInfo
 import com.mohiva.play.silhouette.impl.daos.DelegableAuthInfoDAO
-import models.daos.PasswordInfoDAO._
+import models.services.DbConnection
+import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
 
-import scala.collection.mutable
 import scala.concurrent.Future
 
 /**
  * The DAO to store the password information.
  */
-class PasswordInfoDAO extends DelegableAuthInfoDAO[PasswordInfo] {
+class PasswordInfoDAO @Inject()(db: DbConnection) extends DelegableAuthInfoDAO[PasswordInfo] {
 
   /**
    * Finds the auth info which is linked with the specified login info.
@@ -20,8 +22,20 @@ class PasswordInfoDAO extends DelegableAuthInfoDAO[PasswordInfo] {
    * @param loginInfo The linked login info.
    * @return The retrieved auth info or None if no auth info could be retrieved for the given login info.
    */
-  def find(loginInfo: LoginInfo): Future[Option[PasswordInfo]] = {
-    Future.successful(data.get(loginInfo))
+  def find(loginInfo: LoginInfo): Future[Option[PasswordInfo]] = Future.successful {
+    val result = db.engine.execute(
+      Queries.Password.find, Map("providerID" -> loginInfo.providerID, "providerKey" -> loginInfo.providerKey))
+
+    if (result.isEmpty)
+      None
+    else {
+      val row = result.next()
+      val hasher = row("p.hasher").toString
+      val password = row("p.password").toString
+      Logger.info(s"password from db: $password")
+      Logger.info(s"hasher from db: $hasher")
+      Some(PasswordInfo(hasher, password, None))
+    }
   }
 
   /**
@@ -32,7 +46,16 @@ class PasswordInfoDAO extends DelegableAuthInfoDAO[PasswordInfo] {
    * @return The added auth info.
    */
   def add(loginInfo: LoginInfo, authInfo: PasswordInfo): Future[PasswordInfo] = {
-    data += (loginInfo -> authInfo)
+    db.engine.execute(
+      Queries.Password.create, Map(
+        "providerID" -> loginInfo.providerID,
+        "providerKey" -> loginInfo.providerKey,
+        "hasher" -> authInfo.hasher,
+        "password" -> authInfo.password
+      ))
+    Logger.info(s"password to db: ${authInfo.password}")
+    Logger.info(s"hasher to db: ${authInfo.hasher}")
+
     Future.successful(authInfo)
   }
 
@@ -44,7 +67,13 @@ class PasswordInfoDAO extends DelegableAuthInfoDAO[PasswordInfo] {
    * @return The updated auth info.
    */
   def update(loginInfo: LoginInfo, authInfo: PasswordInfo): Future[PasswordInfo] = {
-    data += (loginInfo -> authInfo)
+    db.engine.execute(
+      Queries.Password.update, Map(
+        "providerID" -> loginInfo.providerID,
+        "providerKey" -> loginInfo.providerKey,
+        "hasher" -> authInfo.hasher,
+        "password" -> authInfo.password
+      ))
     Future.successful(authInfo)
   }
 
@@ -72,18 +101,9 @@ class PasswordInfoDAO extends DelegableAuthInfoDAO[PasswordInfo] {
    * @return A future to wait for the process to be completed.
    */
   def remove(loginInfo: LoginInfo): Future[Unit] = {
-    data -= loginInfo
+    db.engine.execute(
+      Queries.Password.delete, Map("providerID" -> loginInfo.providerID, "providerKey" -> loginInfo.providerKey))
     Future.successful(())
   }
 }
 
-/**
- * The companion object.
- */
-object PasswordInfoDAO {
-
-  /**
-   * The data store for the password info.
-   */
-  var data: mutable.HashMap[LoginInfo, PasswordInfo] = mutable.HashMap()
-}

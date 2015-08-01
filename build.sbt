@@ -1,6 +1,6 @@
 import scalariform.formatter.preferences._
 
-name := """myjits2"""
+name := """myjits"""
 
 version := "3.0.0"
 
@@ -21,7 +21,8 @@ libraryDependencies ++= Seq(
   "com.mohiva" %% "play-silhouette-testkit" % "3.0.0" % "test",
   specs2 % Test,
   cache,
-  filters
+  filters,
+  "org.neo4j" % "neo4j" % "2.3.0-M02"
 )
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
