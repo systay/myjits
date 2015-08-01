@@ -21,7 +21,9 @@ class DbConnection @Inject()(lifecycle: ApplicationLifecycle) {
 
 
   lifecycle.addStopHook { () =>
-    Logger.info("database cleanly shutdown")
-    Future.successful(db.shutdown())
+    Future.successful({
+      db.shutdown()
+      Logger.info("database cleanly shutdown")
+    })
   }
 }

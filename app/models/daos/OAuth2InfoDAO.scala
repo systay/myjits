@@ -1,65 +1,56 @@
 package models.daos
 
+import javax.inject.Inject
+
 import com.mohiva.play.silhouette.api.LoginInfo
 import com.mohiva.play.silhouette.impl.daos.DelegableAuthInfoDAO
 import com.mohiva.play.silhouette.impl.providers.OAuth2Info
-import models.daos.OAuth2InfoDAO._
+import models.services.DbConnection
+import play.api.Logger
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.json.{JsObject, Json}
 
-import scala.collection.mutable
 import scala.concurrent.Future
 
 /**
  * The DAO to store the OAuth2 information.
- *
- * Note: Not thread safe, demo only.
- */
-class OAuth2InfoDAO extends DelegableAuthInfoDAO[OAuth2Info] {
+ **/
+class OAuth2InfoDAO @Inject()(db: DbConnection) extends DelegableAuthInfoDAO[OAuth2Info] {
 
-  /**
-   * Finds the auth info which is linked with the specified login info.
-   *
-   * @param loginInfo The linked login info.
-   * @return The retrieved auth info or None if no auth info could be retrieved for the given login info.
-   */
-  def find(loginInfo: LoginInfo): Future[Option[OAuth2Info]] = {
-    Future.successful(data.get(loginInfo))
+  def find(loginInfo: LoginInfo): Future[Option[OAuth2Info]] = Future {
+    val result = db.engine.execute(
+      Queries.OAuth2Info.find, Map("providerID" -> loginInfo.providerID, "providerKey" -> loginInfo.providerKey))
+
+    if (result.isEmpty) {
+      Logger.info("No OAuth2 found")
+      None
+    } else {
+      val row = result.next()
+      val accessToken = row("p.accessToken").toString
+      val tokenType = Option(row("p.tokenType")).map(_.toString)
+      val expiresIn = Option(row("p.expiresIn")).map(_.asInstanceOf[Int])
+      val refreshToken = Option(row("p.refreshToken")).map(_.toString)
+      val params = Option(row("p.params")).map(x => jsonStringToMap(x.toString))
+      Logger.info("OAuth2 loaded")
+      Some(OAuth2Info(accessToken, tokenType, expiresIn, refreshToken, params))
+    }
   }
 
-  /**
-   * Adds new auth info for the given login info.
-   *
-   * @param loginInfo The login info for which the auth info should be added.
-   * @param authInfo The auth info to add.
-   * @return The added auth info.
-   */
-  def add(loginInfo: LoginInfo, authInfo: OAuth2Info): Future[OAuth2Info] = {
-    data += (loginInfo -> authInfo)
-    Future.successful(authInfo)
+  def add(loginInfo: LoginInfo, authInfo: OAuth2Info): Future[OAuth2Info] = Future {
+    db.engine.execute(
+      Queries.OAuth2Info.create, createParamsMap(loginInfo, authInfo))
+    Logger.info("OAuth2 added")
+    authInfo
   }
 
-  /**
-   * Updates the auth info for the given login info.
-   *
-   * @param loginInfo The login info for which the auth info should be updated.
-   * @param authInfo The auth info to update.
-   * @return The updated auth info.
-   */
-  def update(loginInfo: LoginInfo, authInfo: OAuth2Info): Future[OAuth2Info] = {
-    data += (loginInfo -> authInfo)
-    Future.successful(authInfo)
+
+  def update(loginInfo: LoginInfo, authInfo: OAuth2Info): Future[OAuth2Info] = Future {
+    db.engine.execute(
+      Queries.OAuth2Info.update, createParamsMap(loginInfo, authInfo))
+
+    authInfo
   }
 
-  /**
-   * Saves the auth info for the given login info.
-   *
-   * This method either adds the auth info if it doesn't exists or it updates the auth info
-   * if it already exists.
-   *
-   * @param loginInfo The login info for which the auth info should be saved.
-   * @param authInfo The auth info to save.
-   * @return The saved auth info.
-   */
   def save(loginInfo: LoginInfo, authInfo: OAuth2Info): Future[OAuth2Info] = {
     find(loginInfo).flatMap {
       case Some(_) => update(loginInfo, authInfo)
@@ -67,25 +58,30 @@ class OAuth2InfoDAO extends DelegableAuthInfoDAO[OAuth2Info] {
     }
   }
 
-  /**
-   * Removes the auth info for the given login info.
-   *
-   * @param loginInfo The login info for which the auth info should be removed.
-   * @return A future to wait for the process to be completed.
-   */
-  def remove(loginInfo: LoginInfo): Future[Unit] = {
-    data -= loginInfo
-    Future.successful(())
+  def remove(loginInfo: LoginInfo): Future[Unit] = Future {
+    db.engine.execute(
+      Queries.OAuth2Info.delete, Map("providerID" -> loginInfo.providerID, "providerKey" -> loginInfo.providerKey))
+    Logger.info("OAuth2 deleted")
+    ()
   }
-}
 
-/**
- * The companion object.
- */
-object OAuth2InfoDAO {
+  private def jsonStringToMap(input: String): Map[String, String] = Json.parse(input) match {
+    case JsObject(map) => map.mapValues(_.toString()).toMap
+    case _ => throw new RuntimeException("Expected a Json map but got " + input)
+  }
 
-  /**
-   * The data store for the OAuth2 info.
-   */
-  var data: mutable.HashMap[LoginInfo, OAuth2Info] = mutable.HashMap()
+  private def mapToJsonString(input: Map[String, String]): String =
+    Json.toJson(input).toString()
+
+  private def createParamsMap(loginInfo: LoginInfo, authInfo: OAuth2Info): Map[String, Any] = {
+    Map(
+      "providerID" -> loginInfo.providerID,
+      "providerKey" -> loginInfo.providerKey,
+      "accessToken" -> authInfo.accessToken,
+      "tokenType" -> authInfo.tokenType.orNull,
+      "expiresIn" -> authInfo.expiresIn.orNull,
+      "refreshToken" -> authInfo.refreshToken.orNull,
+      "params" -> authInfo.params.map(mapToJsonString).orNull
+    )
+  }
 }

@@ -5,9 +5,9 @@ access.denied = Access denied!
 user.exists = There already exists a user with this email!
 could.not.authenticate = Could not authenticate with social provider! Please try again!
 
-home.title = Silhouette - Home
-sign.up.title = Silhouette - Sign Up
-sign.in.title = Silhouette - Sign In
+home.title = myJits - Home
+sign.up.title = myJits - Sign Up
+sign.in.title = myJits - Sign In
 
 toggle.navigation = Toggle navigation
 welcome.signed.in = Welcome, you are now signed in!
@@ -31,7 +31,7 @@ already.a.member = Already a member?
 not.a.member = Not a member?
 
 remember.me = Remember my login on this computer
-or.use.social = Or use your existing account on one of the following services to sign in:
+or.use.social = Or sign in with your Facebook account
 
 google = Google
 facebook = Facebook
